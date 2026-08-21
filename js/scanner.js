@@ -111,16 +111,41 @@ export class ScannerController {
                   ]
         };
 
-        const cameraConfig = { facingMode: 'environment' };
+        this.processandoLeitura = false;
+        this.cameraConfig = { facingMode: 'environment' };
 
         try {
             await this.html5QrCode.start(
-                cameraConfig,
+                this.cameraConfig,
                 config,
-                (decodedText, result) => {
+                async (decodedText, result) => {
+                    // Evita disparos múltiplos e loops contínuos
+                    if (this.processandoLeitura) return;
+                    this.processandoLeitura = true;
+
                     this.tocarBipeSucesso();
+
+                    // Pausa temporariamente a câmera enquanto processa a leitura
+                    try {
+                        if (this.html5QrCode && this.html5QrCode.pause) {
+                            this.html5QrCode.pause();
+                        }
+                    } catch (e) {}
+
                     if (this.onScanCallback) {
-                        this.onScanCallback(decodedText, this.currentMode, result);
+                        try {
+                            await this.onScanCallback(decodedText, this.currentMode, result);
+                        } finally {
+                            // Libera após 2.5 segundos para nova leitura caso não tenha aberto modal
+                            setTimeout(() => {
+                                this.processandoLeitura = false;
+                                try {
+                                    if (this.html5QrCode && this.html5QrCode.resume && this.isScanning) {
+                                        this.html5QrCode.resume();
+                                    }
+                                } catch (e) {}
+                            }, 2500);
+                        }
                     }
                 },
                 () => {} // Frame sem detecção
@@ -136,10 +161,30 @@ export class ScannerController {
                 await this.html5QrCode.start(
                     cameraId,
                     config,
-                    (decodedText, result) => {
+                    async (decodedText, result) => {
+                        if (this.processandoLeitura) return;
+                        this.processandoLeitura = true;
+
                         this.tocarBipeSucesso();
+                        try {
+                            if (this.html5QrCode && this.html5QrCode.pause) {
+                                this.html5QrCode.pause();
+                            }
+                        } catch (e) {}
+
                         if (this.onScanCallback) {
-                            this.onScanCallback(decodedText, this.currentMode, result);
+                            try {
+                                await this.onScanCallback(decodedText, this.currentMode, result);
+                            } finally {
+                                setTimeout(() => {
+                                    this.processandoLeitura = false;
+                                    try {
+                                        if (this.html5QrCode && this.html5QrCode.resume && this.isScanning) {
+                                            this.html5QrCode.resume();
+                                        }
+                                    } catch (e) {}
+                                }, 2500);
+                            }
                         }
                     },
                     () => {}

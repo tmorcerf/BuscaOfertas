@@ -127,15 +127,33 @@
         <div style="margin-bottom:12px;">
           <div id="conf-mercado-nome" style="font-family:'Outfit',sans-serif; font-size:1.15rem; font-weight:700; color:#fff;">Nome do Estabelecimento</div>
           <div id="conf-mercado-cnpj" style="font-size:0.8rem; color:var(--color-text-muted);">CNPJ: --</div>
+          <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+            <a id="conf-link-sefaz-oficial" href="#" target="_blank" class="badge-pill store" style="text-decoration:none; color:var(--color-blue); border-color:rgba(56,189,248,0.4); display:inline-flex; align-items:center; gap:4px;">
+              <i class="fas fa-external-link-alt"></i> Abrir Portal SEFAZ
+            </a>
+            <button id="conf-btn-colar-texto" class="badge-pill achadinho" style="background:rgba(0,255,170,0.1); border-color:var(--color-accent); color:var(--color-accent); cursor:pointer;">
+              <i class="fas fa-paste"></i> Colar Texto da SEFAZ
+            </button>
+            <label class="badge-pill store" style="cursor:pointer; color:#fff; background:rgba(168,85,247,0.15); border-color:var(--color-purple);">
+              <i class="fas fa-camera"></i> Foto do Cupom (IA)
+              <input type="file" id="input-foto-ocr" accept="image/*" style="display:none;">
+            </label>
+          </div>
         </div>
 
         <div style="background:rgba(10,14,28,0.7); border-radius:var(--radius-md); padding:10px 14px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <span style="font-size:0.85rem; color:var(--color-text-muted);">Valor Total da Compra:</span>
-          <span id="conf-valor-total-nota" style="font-family:'Outfit',sans-serif; font-size:1.3rem; font-weight:800; color:var(--color-accent);">R$ 0,00</span>
+          <span style="font-size:0.85rem; color:var(--color-text-muted);">Valor Total da Compra (R$):</span>
+          <input type="number" step="0.01" id="conf-input-valor-total" class="input-custom" style="width:140px; text-align:right; font-family:'Outfit',sans-serif; font-size:1.25rem; font-weight:800; color:var(--color-accent); padding:6px 10px;" value="0.00">
         </div>
 
         <!-- Tabela de Itens Extraídos -->
-        <h4 style="font-size:0.9rem; margin-bottom:8px; color:#fff;">Produtos Discriminados (<span id="conf-qtd-itens">0</span> itens):</h4>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <h4 style="font-size:0.9rem; margin:0; color:#fff;">Produtos Discriminados (<span id="conf-qtd-itens">0</span> itens):</h4>
+          <button id="btn-add-item-manual" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem;">
+            <i class="fas fa-plus"></i> Adicionar Item
+          </button>
+        </div>
+
         <div style="max-height:220px; overflow-y:auto; margin-bottom:15px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
           <table style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left;">
             <thead>
@@ -143,6 +161,7 @@
                 <th style="padding:6px 10px;">Item</th>
                 <th style="padding:6px 10px; text-align:center;">Qtd</th>
                 <th style="padding:6px 10px; text-align:right;">Preço</th>
+                <th style="padding:6px 10px; text-align:center; width:30px;"></th>
               </tr>
             </thead>
             <tbody id="conf-itens-tbody">

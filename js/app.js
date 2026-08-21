@@ -266,12 +266,19 @@ class BuscaOfertasApp {
             },
             uf: dadosChave?.uf || { sigla: 'RJ', nome: 'Rio de Janeiro' },
             data: dataEmissao,
+            urlOriginal: dadosChave?.url || rawInput,
             valorTotal: resultadoExtracao?.valorTotal || 0,
             itens: resultadoExtracao?.itens || []
         };
 
         // 5. Exibe card de conferência
         this.renderizarCardConferencia();
+
+        if (this.notaPendente.itens.length > 0) {
+            this.mostrarToast(`✓ ${this.notaPendente.itens.length} produtos extraídos do cupom!`, 'success');
+        } else {
+            this.mostrarToast('Nota identificada! Você pode abrir a SEFAZ, colar o texto ou enviar foto do cupom.', 'info');
+        }
     }
 
     renderizarCardConferencia() {
@@ -282,13 +289,109 @@ class BuscaOfertasApp {
         document.getElementById('conf-mercado-nome').textContent = nota.estabelecimento.nome;
         document.getElementById('conf-mercado-cnpj').textContent = `CNPJ: ${nota.estabelecimento.cnpj || '--'} • ${nota.uf?.sigla || 'BR'}`;
         document.getElementById('conf-data-cupom').textContent = nota.data;
-        document.getElementById('conf-valor-total-nota').textContent = `R$ ${(nota.valorTotal || 0).toFixed(2).replace('.', ',')}`;
         document.getElementById('conf-qtd-itens').textContent = (nota.itens || []).length;
+
+        const inputValor = document.getElementById('conf-input-valor-total');
+        if (inputValor) {
+            inputValor.value = (nota.valorTotal || 0).toFixed(2);
+            inputValor.oninput = (e) => {
+                this.notaPendente.valorTotal = parseFloat(e.target.value) || 0;
+            };
+        }
+
+        // Link oficial da SEFAZ
+        const linkSefaz = document.getElementById('conf-link-sefaz-oficial');
+        if (linkSefaz) {
+            let urlSefaz = nota.urlOriginal || `http://www4.fazenda.rj.gov.br/consultaNFCe/qrcode?p=${nota.chave}|2|1|1`;
+            if (nota.uf?.sigla === 'SP') urlSefaz = `https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=${nota.chave}|2|1|1`;
+            if (nota.uf?.sigla === 'MG') urlSefaz = `https://nfce.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=${nota.chave}`;
+            linkSefaz.href = urlSefaz;
+        }
+
+        // Botão Colar Texto da SEFAZ
+        const btnColar = document.getElementById('conf-btn-colar-texto');
+        if (btnColar) {
+            btnColar.onclick = async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text && text.length > 20) {
+                        const res = SefazParser.processar(text, nota.uf?.sigla || 'RJ');
+                        if (res.itens.length > 0 || res.valorTotal > 0) {
+                            nota.itens = res.itens;
+                            nota.valorTotal = res.valorTotal || nota.valorTotal;
+                            if (res.estabelecimento?.nome) nota.estabelecimento.nome = res.estabelecimento.nome;
+                            this.renderizarCardConferencia();
+                            this.mostrarToast(`✓ ${res.itens.length} itens extraídos da área de transferência!`, 'success');
+                            return;
+                        }
+                    }
+                } catch (e) {}
+
+                // Abre modal de colar se o clipboard falhar
+                const modalPaste = document.getElementById('modal-paste-sefaz');
+                const ta = document.getElementById('textarea-manual-input');
+                if (modalPaste) modalPaste.style.display = 'flex';
+                if (ta) { ta.value = ''; ta.focus(); }
+            };
+        }
+
+        // Input Foto OCR
+        const inputFoto = document.getElementById('input-foto-ocr');
+        if (inputFoto) {
+            inputFoto.onchange = async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                this.mostrarToast('🔍 Analisando imagem da nota com Inteligência Artificial...', 'info');
+                try {
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                        const base64 = reader.result.split(',')[1];
+                        const resVision = await SefazParser.processar(reader.result, nota.uf?.sigla || 'RJ');
+                        if (resVision.itens && resVision.itens.length > 0) {
+                            nota.itens = resVision.itens;
+                            nota.valorTotal = resVision.valorTotal || nota.valorTotal;
+                            this.renderizarCardConferencia();
+                            this.mostrarToast(`✓ ${resVision.itens.length} produtos lidos da imagem!`, 'success');
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } catch (err) {
+                    this.mostrarToast('Erro ao processar imagem.', 'warning');
+                }
+            };
+        }
+
+        // Adicionar Item Manual
+        const btnAddItem = document.getElementById('btn-add-item-manual');
+        if (btnAddItem) {
+            btnAddItem.onclick = () => {
+                const desc = prompt('Nome do produto:');
+                if (!desc) return;
+                const valStr = prompt('Preço do produto (R$):', '10.00');
+                const val = parseFloat(valStr?.replace(',', '.')) || 0;
+                if (val <= 0) return;
+
+                if (!nota.itens) nota.itens = [];
+                nota.itens.push({
+                    codigo: '',
+                    ean: '',
+                    descricao: desc,
+                    quantidade: 1,
+                    unidade: 'UN',
+                    valorUnitario: val,
+                    valorTotal: val
+                });
+
+                // Atualiza soma
+                nota.valorTotal = Math.round(nota.itens.reduce((acc, it) => acc + it.valorTotal, 0) * 100) / 100;
+                this.renderizarCardConferencia();
+            };
+        }
 
         const tbody = document.getElementById('conf-itens-tbody');
         if (tbody) {
             if (nota.itens.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:1rem; color:var(--color-text-muted);">Itens não discriminados. O total da compra de R$ ${(nota.valorTotal || 0).toFixed(2)} será registrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1rem; color:var(--color-text-muted);">Nenhum item discriminado ainda. Abra o link da SEFAZ acima, copie o texto ou digite o valor total da compra.</td></tr>`;
             } else {
                 tbody.innerHTML = nota.itens.map((it, idx) => `
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
@@ -298,8 +401,22 @@ class BuscaOfertasApp {
                         </td>
                         <td style="padding:6px 10px; text-align:center; color:var(--color-text-muted);">${it.quantidade} ${it.unidade || 'UN'}</td>
                         <td style="padding:6px 10px; text-align:right; font-weight:700; color:var(--color-accent);">R$ ${(it.valorTotal || 0).toFixed(2).replace('.', ',')}</td>
+                        <td style="padding:6px 10px; text-align:center;">
+                            <button type="button" class="btn-del-item" data-idx="${idx}" style="background:none; border:none; color:#ef4444; cursor:pointer;" title="Remover item">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
                     </tr>
                 `).join('');
+
+                tbody.querySelectorAll('.btn-del-item').forEach(b => {
+                    b.onclick = () => {
+                        const idx = parseInt(b.getAttribute('data-idx'), 10);
+                        nota.itens.splice(idx, 1);
+                        nota.valorTotal = Math.round(nota.itens.reduce((acc, it) => acc + it.valorTotal, 0) * 100) / 100;
+                        this.renderizarCardConferencia();
+                    };
+                });
             }
         }
 
