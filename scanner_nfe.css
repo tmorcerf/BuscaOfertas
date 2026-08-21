@@ -1,0 +1,343 @@
+/* scanner_nfe.css — Estilos modernos para Importação de NF-e e NFC-e */
+
+:root {
+  --color-accent: #00ffaa;
+  --color-accent-glow: rgba(0, 255, 170, 0.25);
+  --color-blue: #38bdf8;
+  --color-purple: #c084fc;
+  --color-red: #ef4444;
+  --color-warning: #fbbf24;
+  --bg-dark: #0a0a0f;
+  --bg-card: rgba(20, 22, 36, 0.7);
+  --border-card: rgba(255, 255, 255, 0.08);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(135deg, #0a0a0f 0%, #121422 100%);
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  overflow: hidden;
+}
+
+/* Layout Split */
+.layout-split {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Chat Lateral Esquerdo Eduardo */
+.chat-container {
+  flex: 0 0 370px;
+  width: 370px;
+  background: rgba(15, 17, 28, 0.95);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-right: 1px solid var(--border-card);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  transition: margin-left 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s ease;
+}
+
+.chat-container.collapsed {
+  margin-left: -370px;
+}
+
+/* Painel Principal */
+.data-container {
+  flex: 1;
+  padding: 1.5rem 2.2rem;
+  overflow-y: auto;
+  background: radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.06) 0%, transparent 60%);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Cards Base */
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-card);
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+/* Entrada de Chave de Acesso Widescreen */
+.chave-input-card {
+  background: linear-gradient(135deg, rgba(20, 24, 45, 0.8) 0%, rgba(15, 18, 35, 0.9) 100%);
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  box-shadow: 0 0 25px rgba(0, 255, 170, 0.05);
+}
+
+.chave-input-large {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'Outfit', monospace;
+  font-size: 1.25rem;
+  letter-spacing: 2px;
+  padding: 0.9rem 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.chave-input-large:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 15px var(--color-accent-glow);
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #000;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px var(--color-accent-glow);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Scanner de Câmera */
+.scanner-viewport-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  height: 320px;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid rgba(0, 255, 170, 0.4);
+  box-shadow: 0 0 25px rgba(0, 255, 170, 0.15);
+}
+
+.scan-frame-anim {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.scan-line-laser {
+  position: absolute;
+  top: 0;
+  left: 5%;
+  width: 90%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00ffaa, transparent);
+  box-shadow: 0 0 12px #00ffaa;
+  animation: scanLaser 2s infinite ease-in-out;
+}
+
+@keyframes scanLaser {
+  0% { top: 10%; opacity: 0.2; }
+  50% { top: 85%; opacity: 1; }
+  100% { top: 10%; opacity: 0.2; }
+}
+
+/* Card de Conferência da Nota */
+.conferencia-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.conferencia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 1rem;
+}
+
+.estab-nome {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.meta-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.badge-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.badge-pill.accent {
+  background: rgba(0, 255, 170, 0.12);
+  border-color: rgba(0, 255, 170, 0.3);
+  color: var(--color-accent);
+}
+
+.badge-pill.warning {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--color-warning);
+}
+
+.total-destaque {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--color-accent);
+  text-align: right;
+}
+
+/* Tabela de Produtos */
+.itens-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.itens-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.itens-table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.itens-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #fff;
+}
+
+.itens-table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Card de Opção de Vínculo */
+.vinculo-box {
+  background: rgba(30, 35, 60, 0.4);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 14px;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vinculo-options-row {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.vinculo-radio-card {
+  flex: 1;
+  min-width: 240px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s;
+}
+
+.vinculo-radio-card.selected {
+  border-color: var(--color-accent);
+  background: rgba(0, 255, 170, 0.08);
+}
+
+/* Responsividade Adaptável */
+@media (max-width: 900px) {
+  .layout-split {
+    flex-direction: column;
+  }
+  
+  .chat-container {
+    display: none; /* Em mobile foca na câmera e formulário */
+  }
+
+  .data-container {
+    padding: 1rem;
+  }
+
+  .chave-input-large {
+    font-size: 1rem;
+    letter-spacing: 1px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

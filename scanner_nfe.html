@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Corta Gastos - Importar NF-e & Cupons Fiscais</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <!-- html5-qrcode para leitura de QR Code via câmera -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="scanner_nfe.css">
+</head>
+<body>
+
+  <div id="app-header"></div>
+
+  <!-- Toast Notification -->
+  <div id="nfe-toast" style="display:none; position:fixed; top:20px; right:20px; z-index:10000; padding:12px 20px; border-radius:12px; background:rgba(20,24,40,0.95); border:1px solid rgba(0,255,170,0.4); color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.5); font-weight:600; font-size:0.9rem;"></div>
+
+  <!-- Global Loader Overlay -->
+  <div id="nfe-global-loader" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(10,10,15,0.85); backdrop-filter:blur(10px); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; gap:15px;">
+    <div style="width:50px; height:50px; border:4px solid rgba(255,255,255,0.1); border-top-color:var(--color-accent); border-radius:50%; animation:spin 1s linear infinite;"></div>
+    <div id="nfe-loader-label" style="color:#fff; font-size:1.1rem; font-weight:600;">Processando...</div>
+  </div>
+
+  <div class="layout-split">
+    <!-- Lado Esquerdo: Copiloto Eduardo IA -->
+    <aside class="chat-container" id="eduardo-copilot-container">
+      <div style="padding: 1.2rem 1.4rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(20, 22, 36, 0.7); display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 46px; height: 46px; border-radius: 14px; overflow: hidden; border: 2px solid var(--color-accent, #00ffaa); background: #fff; box-shadow: 0 0 15px rgba(0, 255, 170, 0.25); flex-shrink: 0;">
+            <img src="../../img/eduardo.png" alt="Eduardo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.outerHTML='<div style=\'width:100%; height:100%; background:#111; display:flex; align-items:center; justify-content:center;\'><i class=\'fas fa-robot\' style=\'color:#00ffaa; font-size:1.3rem;\'></i></div>';">
+          </div>
+          <div>
+            <h2 style="font-size: 1.1rem; color: #fff; font-family: 'Outfit', sans-serif; margin: 0 0 2px 0; font-weight: 700;">Eduardo</h2>
+            <span style="font-size: 0.78rem; color: var(--color-accent, #00ffaa); font-weight: 600; display:flex; align-items:center; gap:5px;">
+              <i class="fas fa-circle" style="font-size: 0.5rem;"></i> Assistente NF-e
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div id="eduardo-feed" style="flex:1; overflow-y:auto; padding:1.2rem; display:flex; flex-direction:column; gap:12px;">
+        <div class="msg eduardo" style="background: rgba(24, 28, 48, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 12px 16px; color: #fff; font-size: 0.9rem; line-height: 1.4;">
+          👋 Olá! Eu sou o <strong>Eduardo</strong>. Escaneie o QR Code do seu cupom fiscal pelo celular ou cole a chave de 44 dígitos.<br><br>
+          💡 <em>Dica: Ao importar, identifico o estabelecimento e gravo cada produto no seu histórico de preços!</em>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Lado Direito: Dashboard Principal de Importação -->
+    <main class="data-container">
+      
+      <!-- Cabeçalho -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+          <h2 style="font-size: 1.8rem; font-weight: 700; margin: 0; color: #fff; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-qrcode" style="color:var(--color-accent);"></i> Importar NF-e & Cupons
+          </h2>
+          <p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.5); font-size: 0.9rem;">
+            Digitalize cupons fiscais instantaneamente via QR Code, chave de 44 dígitos ou foto.
+          </p>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <a href="../importar_extratos/importacao.html" class="btn-secondary" style="text-decoration:none;">
+            <i class="fas fa-file-invoice-dollar"></i> Importar Extrato
+          </a>
+          <a href="../../lancamentos/lancamentos.html" class="btn-secondary" style="text-decoration:none;">
+            <i class="fas fa-list"></i> Ver Lançamentos
+          </a>
+        </div>
+      </div>
+
+      <!-- Área de Entrada de Dados -->
+      <div id="section-input-area" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- Card 1: Digitação / Colagem de Chave de Acesso (Destaque Widescreen) -->
+        <div class="card chave-input-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+            <label style="font-size: 1.05rem; font-weight: 700; color: #fff; display:flex; align-items:center; gap:8px;">
+              <i class="fas fa-barcode" style="color:var(--color-accent);"></i> Chave de Acesso (44 dígitos)
+            </label>
+            <span id="chave-validade-badge" class="badge-pill" style="display:none;"></span>
+          </div>
+
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <input type="text" id="input-chave-acesso" class="chave-input-large" placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000" autocomplete="off" spellcheck="false">
+            
+            <button id="btn-colar-chave" class="btn-secondary" title="Colar da área de transferência">
+              <i class="fas fa-paste"></i> Colar
+            </button>
+            <button id="btn-processar-chave" class="btn-primary">
+              <i class="fas fa-search"></i> Consultar NF-e
+            </button>
+          </div>
+          <small style="color: rgba(255,255,255,0.4); margin-top: 8px; display: block;">
+            Cole a URL da SEFAZ ou os 44 números impressos no cupom fiscal. O dígito verificador é validado na hora via Módulo 11.
+          </small>
+        </div>
+
+        <!-- Botões de Métodos Alternativos (Câmera & Foto) -->
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+          <button id="btn-toggle-camera" class="btn-secondary" style="flex:1; justify-content:center; padding: 1rem; border-color: rgba(0,255,170,0.3); background: rgba(0,255,170,0.05);">
+            <i class="fas fa-camera" style="color:var(--color-accent);"></i> Abrir Leitor de QR Code (Câmera)
+          </button>
+
+          <label class="btn-secondary" style="flex:1; justify-content:center; padding: 1rem; cursor:pointer;">
+            <i class="fas fa-image" style="color:var(--color-blue);"></i> Enviar Foto do Cupom (Gemini Vision)
+            <input type="file" id="file-upload-cupom" accept="image/*" style="display:none;">
+          </label>
+        </div>
+
+        <!-- Viewfinder da Câmera (Inicia visível em Mobile) -->
+        <div id="section-camera-scanner" class="card" style="display:none; text-align:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0; font-size:1.1rem; color:#fff; display:flex; align-items:center; gap:8px;">
+              <i class="fas fa-camera" style="color:var(--color-accent);"></i> Aponte a câmera para o QR Code
+            </h3>
+            <button id="btn-flip-cam" class="btn-secondary" style="padding:4px 10px; font-size:0.8rem;">
+              <i class="fas fa-sync-alt"></i> Alternar Câmera
+            </button>
+          </div>
+
+          <div class="scanner-viewport-wrapper">
+            <div id="qr-reader-viewfinder" style="width:100%; height:100%;"></div>
+            <div class="scan-frame-anim">
+              <div class="scan-line-laser"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Card de Conferência da Nota (Exibido após Leitura) -->
+      <div id="card-conferencia-wrapper" class="card conferencia-card" style="display:none;">
+        
+        <div class="conferencia-header">
+          <div>
+            <div class="estab-nome" id="conf-estab-nome">Carregando Estabelecimento...</div>
+            <div id="conf-estab-cnpj" style="color:rgba(255,255,255,0.6); font-size:0.85rem;">CNPJ: --</div>
+            <div class="meta-badges">
+              <span id="conf-estab-uf" class="badge-pill">📍 UF</span>
+              <span id="conf-estab-modelo" class="badge-pill">📄 Modelo</span>
+              <span id="conf-estab-data" class="badge-pill">📅 Data</span>
+              <a id="conf-btn-sefaz-link" href="#" target="_blank" class="badge-pill" style="text-decoration:none; color:var(--color-blue); border-color:rgba(56,189,248,0.3); display:inline-flex; align-items:center; gap:4px;">
+                <i class="fas fa-external-link-alt"></i> Consultar no Portal SEFAZ
+              </a>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:flex-end;">
+            <label style="font-size:0.85rem; color:rgba(255,255,255,0.6); margin-bottom:4px;">Valor Total da Compra (R$)</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.4rem; font-weight:800; color:var(--color-accent);">R$</span>
+              <input type="number" step="0.01" min="0" id="input-conf-valor-total" class="chave-input-large" style="width: 140px; text-align:right; font-size:1.4rem; font-weight:800; color:var(--color-accent); padding: 6px 12px;" placeholder="0,00" value="0.00">
+            </div>
+          </div>
+        </div>
+
+        <!-- Alerta Informativo e Botão de Colar Texto SEFAZ -->
+        <div id="conf-info-itens" style="background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); border-radius:10px; padding:12px 16px; color:#bae6fd; font-size:0.88rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            📄 <strong>Importação SEFAZ:</strong> Abra a consulta oficial da SEFAZ no botão acima, selecione e copie o texto da página (Ctrl+A, Ctrl+C) e cole aqui para extrair todos os produtos instantaneamente.
+          </div>
+          <button id="btn-abrir-modal-texto-sefaz" class="btn-primary" style="padding:6px 14px; font-size:0.85rem;">
+            <i class="fas fa-paste"></i> Colar Texto da SEFAZ
+          </button>
+        </div>
+
+        <!-- Modal para Colar Texto da SEFAZ -->
+        <div id="modal-colar-sefaz" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); z-index:10001; align-items:center; justify-content:center;">
+          <div style="background:#141624; border:1px solid rgba(255,255,255,0.15); border-radius:16px; width:90%; max-width:650px; padding:1.5rem; display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h3 style="margin:0; color:#fff; font-size:1.2rem;"><i class="fas fa-file-alt" style="color:var(--color-accent);"></i> Colar Conteúdo da Página SEFAZ</h3>
+              <button id="btn-fechar-modal-sefaz" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:1.2rem; cursor:pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            <p style="color:rgba(255,255,255,0.7); font-size:0.85rem; margin:0;">
+              Cole abaixo o texto ou tabela copiada da página de consulta da SEFAZ (Ctrl+A e Ctrl+C na aba da SEFAZ):
+            </p>
+            <textarea id="textarea-texto-sefaz" rows="10" class="chave-input-large" style="font-size:0.85rem; font-family:monospace; resize:vertical;" placeholder="Cole aqui o texto da página da SEFAZ..."></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+              <button id="btn-cancelar-modal-sefaz" class="btn-secondary">Cancelar</button>
+              <button id="btn-extrair-texto-sefaz" class="btn-primary"><i class="fas fa-check"></i> Extrair Produtos e Valores</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alerta de Contingência -->
+        <div id="conf-alerta-contingencia" style="display:none; background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.3); border-radius:10px; padding:10px 15px; color:#fbbf24; font-size:0.85rem;">
+          ⚠️ <strong>Nota em Contingência Offline:</strong> Esta nota foi emitida sem internet pelo estabelecimento. Os detalhes dos itens podem levar algumas horas para constar nos servidores da SEFAZ, mas o lançamento financeiro e a chave já ficam registrados.
+        </div>
+
+        <!-- Tabela de Produtos Extraídos -->
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h4 style="margin: 0; font-size: 1rem; color: #fff; display:flex; align-items:center; gap:8px;">
+              <i class="fas fa-shopping-basket" style="color:var(--color-purple);"></i> Itens do Cupom Fiscal
+            </h4>
+            <button id="btn-adicionar-item-manual" class="btn-secondary" style="padding:4px 10px; font-size:0.8rem;">
+              <i class="fas fa-plus"></i> Adicionar Item
+            </button>
+          </div>
+          <div class="itens-table-wrapper">
+            <table class="itens-table">
+              <thead>
+                <tr>
+                  <th style="width:30px;">#</th>
+                  <th>Descrição do Produto</th>
+                  <th>Qtd / Unidade</th>
+                  <th style="text-align:right;">Preço Unit.</th>
+                  <th style="text-align:right;">Subtotal</th>
+                  <th style="width:40px; text-align:center;">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="conf-itens-tbody">
+                <tr>
+                  <td colspan="6" style="text-align:center; padding:1.5rem; color:rgba(255,255,255,0.4);">Nenhum item discriminado. Digite o valor total da compra acima ou adicione itens.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Opções de Destino Financeiro & Vínculo de Lançamento -->
+        <div class="vinculo-box" id="conf-vinculo-container">
+          <!-- Renderizado dinamicamente pelo scanner_nfe.js -->
+        </div>
+
+        <!-- Seletor de Conta (Caso seja Novo Lançamento) -->
+        <div id="wrapper-select-conta" style="margin-top:5px;">
+          <label style="font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px; display: block;">Conta de Pagamento:</label>
+          <select id="select-conta-nfe" class="chave-input-large" style="font-size: 0.9rem; padding: 10px 14px; font-family:'Outfit',sans-serif;">
+            <option value="" disabled selected>Carregando contas...</option>
+          </select>
+        </div>
+
+        <!-- Ações Finais -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:12px;">
+          <button id="btn-descartar-nota" class="btn-secondary">
+            <i class="fas fa-times"></i> Cancelar / Ler Outra
+          </button>
+          
+          <button id="btn-salvar-nota" class="btn-primary" style="font-size:1.05rem; padding:0.9rem 2rem;">
+            <i class="fas fa-save"></i> Confirmar e Salvar no Corta Gastos
+          </button>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  
+  <script type="module" src="../../js/firebase_config.js"></script>
+  <script type="module">
+    import { auth } from '../../js/firebase_config.js';
+    import { renderHeader } from '../../js/components/header.js';
+
+    renderHeader('app-header', 'importar_nfe');
+    
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = '../../cortagastos.html';
+      }
+    });
+
+    import './js/scanner_nfe.js';
+  </script>
+</body>
+</html>
