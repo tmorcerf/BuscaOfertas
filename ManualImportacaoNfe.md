@@ -1,87 +1,48 @@
-# 🧾 Manual de Importação de NF-e / NFC-e (Corta Gastos)
+# 🧾 Manual de Importação de NF-e / NFC-e (Busca Ofertas)
 
 > **Documento Oficial de Engenharia, Regras de Negócio e Arquitetura do Módulo de Notas Fiscais**  
-> *Versão de Integração: Corta Gastos V0.9.901+*
+> *Versão de Integração: Busca Ofertas V1.0*
 
 ---
 
-## 1. Visão Geral
-O módulo de **Importação de NF-e / NFC-e** (`/Importacao/importar_nfe`) é o motor especializado na digitalização, extração e conciliação automática de cupons e notas fiscais brasileiras para o ecossistema do **Corta Gastos**.
+## 1. Visão Geral e Diretrizes Inegociáveis
 
-### 🎯 Diretrizes Fundamentais do Sistema:
-1. **Extração 100% Determinística (Sem IA na Leitura Fiscal):**
-   - O processo de leitura dos dados fiscais não utiliza IA para ler ou inventar dados. Toda a extração de produtos, quantidades, unidades, valores unitários e totalizador é feita por **código e expressões regulares estruturadas (Regex)** sobre o DOM da SEFAZ.
-2. **Diferença Técnica entre QR Code e Chave de Acesso:**
-   - **QR Code da NFC-e (Consulta Direta sem CAPTCHA):** Conforme a legislação fiscal brasileira (Manual dos Padrões Técnicos do DANFE NFC-e e QR Code - ENCAT), a URL contida no QR Code é assinada e autenticada com tokens do emitente (`p=CHAVE|2|1|1|CSC|HASH`), **permitindo consulta direta ao consumidor sem exigência de CAPTCHA**.
-   - **Chave de Acesso de 44 Dígitos (Consulta com CAPTCHA):** Ao consultar apenas os 44 números diretamente nos portais estaduais da SEFAZ, o governo impõe barreiras de segurança (reCAPTCHA / hCaptcha / Bloqueios anti-bot). Por isso, a digitação de chave manual decompõe os 44 dígitos em cabeçalho matemático (UF, CNPJ, Data, Série, Número), permitindo a conferência e o preenchimento do valor pago.
-3. **Prevenção de Duplicidade de Gastos:**
-   - A nota fiscal pode ser vinculada diretamente a uma transação do extrato bancário. Ao vincular, a categoria do extrato é substituída pela categoria de sistema `"Compras"`, garantindo que os itens da nota fiscal detalhem a despesa sem duplicar o valor financeiro.
-4. **Base Histórica de Preços (`Precos`):**
-   - Cada produto importado é registrado na coleção histórica de preços, permitindo ao usuário acompanhar a evolução de preços dos itens que consome ao longo do tempo.
+O módulo de **Importação de NF-e / NFC-e** é o motor automatizado de digitalização, extração determinística e alimentação da base de preços por **QR Code de Cupons Fiscais**.
+
+### 🚫 Soluções Estritamente Proibidas (NÃO UTILIZAR):
+1. ❌ **PROIBIDO: Cópia e Colagem Manual:** Não exigir que o usuário copie texto da SEFAZ e cole no app.
+2. ❌ **PROIBIDO: Foto / OCR de Imagem com IA:** A leitura não deve depender de foto do papel nem de IA de visão.
+3. ❌ **PROIBIDO: Digitação Manual de Valores/Itens:** O aplicativo deve extrair todos os produtos, quantidades, unidades, valores unitários e totalizador de forma 100% automatizada e determinística a partir da URL do QR Code.
 
 ---
 
-## 2. Arquitetura do Fluxo de Importação
+## 🎯 Diretrizes Fundamentais de Funcionamento:
+
+1. **Extração 100% Determinística e Automatizada:**
+   - O processo de leitura é disparado unicamente pelo escaneamento do **QR Code da NFC-e**.
+   - A consulta ocorre diretamente pela URL autenticada do QR Code (`p=CHAVE|2|1|1|CSC|HASH`), que é livre de CAPTCHA conforme as normas do ENCAT.
+
+2. **Mecanismo de Abertura em Navegador Embutido (InAppBrowser / WebView):**
+   - Ao ler o QR Code, o sistema aciona a abertura da URL da SEFAZ no navegador embutido (InAppBrowser / WebView).
+   - **Delay Obrigatório de Renderização:** Aplica-se um delay configurado (2 a 3 segundos) para aguardar o carregamento completo do DOM da SEFAZ antes de injetar os scripts de extração.
+   - O script injetado lê os elementos do DOM (`#tabResult`, `.table`, `innerText`), extrai todos os produtos com seus códigos/EANs e preços, e transmite os dados estruturados de volta para o aplicativo via `postMessage`.
+   - A janela embutida é fechada automaticamente assim que a extração é concluída.
+
+3. **Salvamento e Gamificação:**
+   - Cada produto é salvo na tabela `produtos_precos` com EAN, descrição, valor unitário, supermercado e data.
+   - O usuário recebe automaticamente suas moedas virtuais e bônus de "Achadinho" sem necessidade de ações adicionais.
+
+---
+
+## 2. Arquitetura do Fluxo de Importação Automatizado
 
 ```mermaid
 flowchart TD
-    A["📱 Escaneamento de QR Code (Câmera Mobile)"] -->|URL Autenticada sem Captcha| B["SefazExtractor / SefazScripts"]
-    C["⌨️ Digitação da Chave de Acesso (44 Dígitos)"] -->|Decomposição Módulo 11| D["ChaveParser"]
-    
-    B --> E["📦 Extração Determinística de Itens e Valores"]
-    D --> F["🏢 Decomposição de UF, CNPJ, Data, Série, Número"]
-    
-    E --> G["📊 Tela de Conferência"]
-    F --> G
-    
-    G --> H{"Destino Financeiro"}
-    H -->|Vincular a Extrato Existente| I["🔗 Substitui Categoria do Extrato para 'Compras'"]
-    H -->|Novo Lançamento| J["➕ Cria Lançamento de Despesa na Conta Selecionada"]
-    
-    I --> K["💾 Gravação Firestore: NotasFiscais + Precos + Lancamentos"]
-    J --> K
+    A["📱 Câmera lê QR Code do Cupom"] --> B["🌐 Abertura Automática da URL SEFAZ (Navegador Embutido / InAppBrowser)"]
+    B --> C["⏳ Delay de 2-3s (Aguardar Renderização do DOM da SEFAZ)"]
+    C --> D["⚙️ Injeção de Script Determinístico (SefazScripts)"]
+    D --> E["📦 Extração de Produtos, EANs, Preços e Estabelecimento"]
+    E --> F["🔒 Fechamento Automático do Navegador Embutido"]
+    F --> G["💾 Gravação no Banco de Dados (IndexedDB)"]
+    G --> H["🪙 Crédito Automático de Moedas e Detecção de Achadinhos"]
 ```
-
----
-
-## 3. Estrutura dos Arquivos do Módulo
-
-O módulo reside na pasta `/WEB/Importacao/importar_nfe/`:
-
-| Arquivo | Responsabilidade |
-| :--- | :--- |
-| **`scanner_nfe.html`** | Interface visual com Layout Split (Sidebar com assistente Eduardo + Painel Central responsivo). |
-| **`scanner_nfe.css`** | Estilização Dark Glassmorphism, viewport da câmera e animações de laser. |
-| **`js/chave_parser.js`** | Validador matemático Módulo 11, formatação em blocos de 4 dígitos e decomposição dos 44 números da chave. |
-| **`js/scanner.js`** | Controlador da câmera do dispositivo usando `html5-qrcode` com suporte a alternância de câmeras. |
-| **`js/sefaz_scripts.js`** | Motor de parsing determinístico com regras de extração para SEFAZ RJ, SP, RS, MG e padrão genérico SVRS. |
-| **`js/sefaz_extractor.js`** | Coordenador de extração web e ponte para WebView / InAppBrowser nativo no celular. |
-| **`js/nfe_sync.js`** | Motor de persistência no Firestore: grava na coleção `NotasFiscais`, vincula com `Lancamentos` e alimenta a base `Precos`. |
-| **`js/scanner_nfe.js`** | Controlador principal da página, gerenciamento de eventos, conferência e sincronização em tempo real. |
-
----
-
-## 4. Decomposição da Chave de Acesso (44 Dígitos)
-
-A chave de acesso segue a especificação nacional da Receita Federal:
-
-$$\underbrace{\text{33}}_{\text{UF (RJ)}}\ \underbrace{\text{26 07}}_{\text{Ano/Mês}}\ \underbrace{\text{52 909 395 0001 43}}_{\text{CNPJ Emitente}}\ \underbrace{\text{65}}_{\text{Modelo NFC-e}}\ \underbrace{\text{001}}_{\text{Série}}\ \underbrace{\text{000 012 157}}_{\text{Nº da Nota}}\ \underbrace{\text{0}}_{\text{Emissão Normal}}\ \underbrace{\text{11478011}}_{\text{Cód. Aleatório}}\ \underbrace{\text{5}}_{\text{DV Módulo 11}}$$
-
-- **UF (01-02):** Código IBGE do Estado emissor (ex: `33` = Rio de Janeiro, `35` = São Paulo).
-- **AAMM (03-06):** Ano e mês de emissão.
-- **CNPJ (07-20):** Cadastro da empresa emissora.
-- **Modelo (21-22):** `65` para Cupom NFC-e ou `55` para NF-e.
-- **Série (23-25) e Número (26-34):** Numeração sequencial da nota fiscal.
-- **DV (44):** Dígito verificador gerado pelo algoritmo Módulo 11.
-
----
-
-## 5. Regras de Negócio e Prevenção de Duplicidade
-
-1. **Checagem de Duplicidade:**
-   - Antes de qualquer processamento, a chave de 44 dígitos é consultada no Firestore. Se a nota já foi cadastrada, o sistema impede nova importação e avisa o usuário.
-2. **Conciliação com Extrato Bancário:**
-   - Se o usuário já importou o extrato do cartão de crédito ou conta bancária, o sistema localiza lançamentos de data e valor compatíveis.
-   - Ao vincular, o lançamento bancário recebe a categoria de sistema `"Compras"` e o identificador `notaFiscalId`, unindo o débito financeiro aos itens detalhados da nota fiscal sem duplicar os gastos no Dashboard.
-3. **Registro na Base Histórica de Preços:**
-   - Cada item da nota fiscal alimenta a coleção `Precos` com `{ nomeProduto, valorUnitario, quantidade, unidade, data, cnpj, uf }`, permitindo consultas de histórico e comparação de preços no Corta Gastos.
