@@ -1,0 +1,24 @@
+{
+  "name": "busca-ofertas",
+  "version": "1.0.0",
+  "description": "Aplicativo Mobile de Scanner de Cupons Fiscais NFC-e e Comparador de Preços",
+  "main": "index.html",
+  "scripts": {
+    "cap:sync": "cap sync",
+    "cap:build": "cap build android",
+    "cap:run": "cap run android",
+    "cap:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/camera": "^6.0.2",
+    "@capacitor/core": "^6.1.2",
+    "@capgo/capacitor-inappbrowser": "^6.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  },
+  "author": "tmorcerf",
+  "license": "ISC"
+}

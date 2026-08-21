@@ -1,0 +1,23 @@
+{
+  "appId": "com.buscaofertas.app",
+  "appName": "Busca Ofertas",
+  "webDir": "./",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "CapgoInAppBrowser": {
+      "backgroundColor": "#0a0c16"
+    }
+  },
+  "server": {
+    "cleartext": true,
+    "allowNavigation": [
+      "*.fazenda.gov.br",
+      "*.fazenda.rj.gov.br",
+      "*.fazenda.sp.gov.br",
+      "*.fazenda.mg.gov.br",
+      "*.sefaz.rs.gov.br",
+      "*.sefaz.ba.gov.br",
+      "*.fazenda.pr.gov.br"
+    ]
+  }
+}
